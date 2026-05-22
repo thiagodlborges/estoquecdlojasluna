@@ -292,12 +292,14 @@ tr:hover td{background:#faf8f5}
               </select>
             </div>
             <div class="field">
-              <label>Unidade de medida</label>
-              <select id="pUnid">
+              <label>Unidade de medida <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(livre ou escolha)</span></label>
+              <input type="text" id="pUnid" list="unidList" placeholder="kg, L, un, cx..." autocomplete="off">
+              <datalist id="unidList">
                 <option>kg</option><option>g</option><option>L</option>
                 <option>ml</option><option>un</option><option>cx</option>
-                <option>pct</option><option>fardo</option><option>m</option><option>rolo</option>
-              </select>
+                <option>pct</option><option>fardo</option><option>m</option>
+                <option>rolo</option><option>saco</option><option>lt</option>
+              </datalist>
             </div>
           </div>
           <div class="field-row">
@@ -397,9 +399,8 @@ tr:hover td{background:#faf8f5}
         <div class="table-wrap-inner">
           <table>
             <thead><tr>
-              <th>Nome</th>
-              <th>Categoria</th>
-              <th>Unid.</th>
+              <th>Nome / Categoria</th>
+              <th>Unid. <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.65rem">(editável)</span></th>
               <th>Estoque mínimo</th>
               <th>Cadastrado em</th>
               <th>Ações</th>
@@ -893,15 +894,21 @@ function renderProdutos() {
     return;
   }
   tb.innerHTML = state.produtos.map(p => `<tr>
-    <td><strong>${p.nome}</strong></td>
-    <td style="color:var(--muted)">${p.cat}</td>
-    <td style="color:var(--hint)">${p.unid}</td>
-    <td style="font-family:var(--mono)">${fmtU(p.minimo, p.unid)}</td>
-    <td style="color:var(--hint)">${p.criado}</td>
+    <td><strong>${p.nome}</strong><br><span style="font-size:.72rem;color:var(--muted)">${p.cat}</span></td>
     <td>
-      <div style="display:flex;gap:6px">
+      <input class="min-input" type="text" value="${p.unid}" style="width:56px;text-align:center"
+        list="unidList"
+        onchange="updateUnidade('${p.id}', this.value)"
+        title="Clique para editar a unidade de medida">
+    </td>
+    <td style="font-family:var(--mono)">${fmtU(p.minimo, p.unid)}</td>
+    <td style="color:var(--hint);font-size:.75rem">${p.criado}</td>
+    <td>
+      <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-sm" onclick="editarProduto('${p.id}')">✏ Editar</button>
-        <button class="btn btn-sm" onclick="excluirProduto('${p.id}')" style="color:var(--red)">✕</button>
+        <button class="btn btn-sm" onclick="excluirProduto('${p.id}')"
+          style="color:var(--red);border-color:rgba(192,57,43,.3)"
+          title="Excluir produto e todas as movimentações">✕ Excluir</button>
       </div>
     </td>
   </tr>`).join('');
@@ -984,6 +991,15 @@ function updateMinimo(id, val) {
   save(); renderEstoque(); renderAlertas();
 }
 
+function updateUnidade(id, val) {
+  const p = state.produtos.find(x => x.id === id);
+  if (!p) return;
+  const u = val.trim();
+  if (!u) return;
+  p.unid = u;
+  save(); renderAll();
+}
+
 /* ═══════════════════════════════════════════════
    ACTIONS: PRODUTO CRUD
 ═══════════════════════════════════════════════ */
@@ -996,6 +1012,7 @@ function openNovoProduto() {
   document.getElementById('pCat').value  = 'Ingrediente';
   document.getElementById('pUnid').value = 'kg';
   openModal('modalProduto');
+  setTimeout(() => document.getElementById('pNome').focus(), 80);
 }
 
 function editarProduto(id) {
