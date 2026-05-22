@@ -99,11 +99,11 @@ tr:hover td{background:#faf8f5}
 .field input:focus,.field select:focus{border-color:var(--accent)}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-.modal-wrap{display:none;margin-bottom:16px}
-.modal-wrap.open{display:block}
-.modal-backdrop{min-height:360px;position:relative;border-radius:var(--rad-lg);background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:24px}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-lg);padding:24px;width:440px;max-width:100%;box-shadow:0 8px 32px rgba(26,20,16,.12)}
-.modal-title{font-size:.95rem;font-weight:800;margin-bottom:16px;color:var(--text);display:flex;align-items:center;gap:8px}
+.modal-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(26,20,16,.45);align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-lg);padding:24px;width:440px;max-width:100%;box-shadow:0 12px 48px rgba(26,20,16,.18);animation:modalIn .18s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+.modal-title{font-size:.95rem;font-weight:800;margin-bottom:16px;color:var(--text)}
 .modal-btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 
 .move-list{padding:0 4px}
@@ -193,83 +193,6 @@ tr:hover td{background:#faf8f5}
 
   <div class="main" id="mainScroll">
 
-    <!-- MODAL: ENTRADA -->
-    <div class="modal-wrap" id="modalEntrada">
-      <div class="modal-backdrop">
-        <div class="modal">
-          <div class="modal-title">↓ Registrar Entrada</div>
-          <div class="field"><label>Produto</label><select id="entProd"></select></div>
-          <div class="field-row">
-            <div class="field"><label>Quantidade</label><input type="number" id="entQty" min="0.001" step="any" placeholder="0"></div>
-            <div class="field"><label>Data</label><input type="date" id="entData"></div>
-          </div>
-          <div class="field"><label>Observação (opcional)</label><input type="text" id="entObs" placeholder="Ex: NF 1234, fornecedor..."></div>
-          <div class="modal-btns">
-            <button class="btn" onclick="closeModal('modalEntrada')">Cancelar</button>
-            <button class="btn btn-primary" onclick="doEntrada()">✓ Confirmar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: SAÍDA -->
-    <div class="modal-wrap" id="modalSaida">
-      <div class="modal-backdrop">
-        <div class="modal">
-          <div class="modal-title">↑ Registrar Saída</div>
-          <div class="field"><label>Produto</label><select id="saiProd"></select></div>
-          <div class="field-row">
-            <div class="field"><label>Quantidade</label><input type="number" id="saiQty" min="0.001" step="any" placeholder="0"></div>
-            <div class="field"><label>Data</label><input type="date" id="saiData"></div>
-          </div>
-          <div class="field"><label>Destino / Observação (opcional)</label><input type="text" id="saiObs" placeholder="Ex: Produção lote 07..."></div>
-          <div class="modal-btns">
-            <button class="btn" onclick="closeModal('modalSaida')">Cancelar</button>
-            <button class="btn btn-exit" onclick="doSaida()">✓ Confirmar saída</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: PRODUTO -->
-    <div class="modal-wrap" id="modalProduto">
-      <div class="modal-backdrop">
-        <div class="modal">
-          <div class="modal-title" id="modalProdTitle">Novo Produto</div>
-          <div class="field-row">
-            <div class="field" style="grid-column:1/-1"><label>Nome do insumo</label><input type="text" id="pNome" placeholder="Ex: Farinha de trigo especial"></div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label>Categoria</label>
-              <select id="pCat">
-                <option>Confeitaria</option><option>Copa (refeição)</option><option>Descartável</option>
-                <option>Embalagem</option><option>EPI</option><option>Escritório</option>
-                <option>Limpeza</option><option>Produção</option><option>Outros</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Unidade <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(livre)</span></label>
-              <input type="text" id="pUnid" list="unidList" placeholder="kg, L, Un, Cx..." autocomplete="off">
-              <datalist id="unidList">
-                <option>kg</option><option>g</option><option>L</option><option>ml</option>
-                <option>Un</option><option>Cx</option><option>Pc</option><option>Rl</option>
-                <option>Pct</option><option>Fardo</option><option>m</option>
-              </datalist>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label>Estoque inicial</label><input type="number" id="pEstIni" min="0" step="any" placeholder="0"></div>
-            <div class="field"><label>Estoque mínimo</label><input type="number" id="pEstMin" min="0" step="any" placeholder="0"></div>
-          </div>
-          <div class="modal-btns">
-            <button class="btn" onclick="closeModal('modalProduto')">Cancelar</button>
-            <button class="btn btn-primary" onclick="salvarProduto()">💾 Salvar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- VIEW: ESTOQUE -->
     <div class="view active" id="view-estoque">
       <div class="summary-grid" id="summaryCards"></div>
@@ -353,6 +276,75 @@ tr:hover td{background:#faf8f5}
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ══ MODALS (fixed overlays) ══════════════════════════ -->
+<div class="modal-overlay" id="modalEntrada" onclick="handleOverlayClick(event,'modalEntrada')">
+  <div class="modal">
+    <div class="modal-title">↓ Registrar Entrada</div>
+    <div class="field"><label>Produto</label><select id="entProd"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Quantidade</label><input type="number" id="entQty" min="0.001" step="any" placeholder="0"></div>
+      <div class="field"><label>Data</label><input type="date" id="entData"></div>
+    </div>
+    <div class="field"><label>Observação (opcional)</label><input type="text" id="entObs" placeholder="Ex: NF 1234, fornecedor..."></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modalEntrada')">Cancelar</button>
+      <button class="btn btn-primary" onclick="doEntrada()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalSaida" onclick="handleOverlayClick(event,'modalSaida')">
+  <div class="modal">
+    <div class="modal-title">↑ Registrar Saída</div>
+    <div class="field"><label>Produto</label><select id="saiProd"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Quantidade</label><input type="number" id="saiQty" min="0.001" step="any" placeholder="0"></div>
+      <div class="field"><label>Data</label><input type="date" id="saiData"></div>
+    </div>
+    <div class="field"><label>Destino / Observação (opcional)</label><input type="text" id="saiObs" placeholder="Ex: Produção lote 07..."></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modalSaida')">Cancelar</button>
+      <button class="btn btn-exit" onclick="doSaida()">✓ Confirmar saída</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalProduto" onclick="handleOverlayClick(event,'modalProduto')">
+  <div class="modal">
+    <div class="modal-title" id="modalProdTitle">Novo Produto</div>
+    <div class="field-row">
+      <div class="field" style="grid-column:1/-1"><label>Nome do insumo</label><input type="text" id="pNome" placeholder="Ex: Copo 200ML, Avental..."></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Categoria</label>
+        <select id="pCat">
+          <option>Embalagem</option><option>Uniformes</option><option>Descartável</option>
+          <option>Limpeza</option><option>EPI</option><option>Escritório</option>
+          <option>Produção</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Unidade <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(livre)</span></label>
+        <input type="text" id="pUnid" list="unidList" placeholder="Un, Cx, kg..." autocomplete="off">
+        <datalist id="unidList">
+          <option>Un</option><option>Cx</option><option>Pc</option><option>kg</option>
+          <option>g</option><option>L</option><option>ml</option><option>Rl</option>
+          <option>Pct</option><option>Fardo</option><option>m</option>
+        </datalist>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Estoque inicial</label><input type="number" id="pEstIni" min="0" step="any" placeholder="0"></div>
+      <div class="field"><label>Estoque mínimo</label><input type="number" id="pEstMin" min="0" step="any" placeholder="0"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modalProduto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProduto()">💾 Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -754,14 +746,24 @@ function populateSelects(){
 ═══════════════════════════════════ */
 function openModal(id){
   closeAllModals();
-  document.getElementById(id).classList.add('open');
+  const el=document.getElementById(id); if(!el) return;
+  el.classList.add('open');
+  document.body.style.overflow='hidden';
   if(id==='modalEntrada') document.getElementById('entData').value=today();
   if(id==='modalSaida')   document.getElementById('saiData').value=today();
   populateSelects();
-  setTimeout(()=>document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'}),40);
 }
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-function closeAllModals(){['modalEntrada','modalSaida','modalProduto'].forEach(closeModal);}
+function closeModal(id){
+  document.getElementById(id)?.classList.remove('open');
+  document.body.style.overflow='';
+}
+function closeAllModals(){
+  ['modalEntrada','modalSaida','modalProduto'].forEach(closeModal);
+}
+function handleOverlayClick(e,id){
+  if(e.target===document.getElementById(id)) closeModal(id);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeAllModals();});
 
 async function doEntrada(){
   const codigo=document.getElementById('entProd').value;
