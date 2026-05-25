@@ -136,6 +136,9 @@ tr:hover td{background:#faf8f5}
 .inline-input:focus{border-color:var(--accent);color:var(--accent)}
 .inline-input-text{text-align:center;width:60px}
 
+.view{display:none}
+.view.active{display:block}
+
 .empty{padding:40px;text-align:center;color:var(--hint);font-size:.82rem}
 .empty-icon{font-size:2rem;margin-bottom:10px;display:block}
 
@@ -258,17 +261,23 @@ tr:hover td{background:#faf8f5}
 
     <!-- VIEW: PRODUTOS -->
     <div class="view" id="view-produtos">
-      <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">Cadastro de Insumos</span>
-          <button class="btn btn-sm btn-primary" onclick="openNovoProduto()">+ Novo produto</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--text)">⚙ Cadastro de Insumos</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:3px">Gerencie os produtos, unidades e estoques mínimos</div>
         </div>
+        <button class="btn btn-primary" onclick="openNovoProduto()">+ Novo produto</button>
+      </div>
+      <div class="table-card">
         <div class="table-wrap-inner">
           <table>
             <thead><tr>
-              <th>Código</th><th>Nome / Categoria</th>
-              <th>Unid. <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.65rem">(editável)</span></th>
-              <th>Estoque mínimo</th><th>Ações</th>
+              <th style="width:90px">Código</th>
+              <th>Nome</th>
+              <th style="width:100px">Categoria</th>
+              <th style="width:90px">Unid. <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.65rem">(editável)</span></th>
+              <th style="width:140px">Estoque mínimo</th>
+              <th style="width:160px">Ações</th>
             </tr></thead>
             <tbody id="tbProdutos"></tbody>
           </table>
@@ -930,6 +939,9 @@ function showTab(name){
   document.querySelector(`[data-tab="${name}"]`).classList.add('active');
   closeAllModals();
   document.getElementById('mainScroll').scrollTop=0;
+  if(name==='movimentacoes') renderMov();
+  if(name==='alertas')       renderAlertas();
+  if(name==='produtos')      renderProdutos();
 }
 
 /* ═══════════════════════════════════
