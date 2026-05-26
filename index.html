@@ -363,14 +363,16 @@ tr:hover td{background:#faf8f5}
 ═══════════════════════════════════ */
 const SB_URL    = 'https://pbuhwpcpdcnaheaywmdv.supabase.co';
 const SB_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWh3cGNwZGNuYWhlYXl3bWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjU5MzksImV4cCI6MjA5MTg0MTkzOX0.Mg4PVg96ZiV3C2Rn0GLQU9c7ui_41OlU6Ldqn5jcvyY';
-const LOGIN_FN  = `${SB_URL}/functions/v1/app-login`;
-const TOKEN_KEY = 'luna_token';
+const LOGIN_FN  = `${SB_URL}/functions/v1/luna-varejo-login`;
+const TOKEN_KEY = 'luna_varejo_token';
 
-const headers = () => ({
+const headers = (write=false) => ({
   'Content-Type': 'application/json',
   'apikey': SB_KEY,
   'Authorization': `Bearer ${SB_KEY}`,
-  'Prefer': 'return=representation'
+  'Prefer': 'return=representation',
+  'Accept-Profile': 'luna_varejo',
+  ...(write ? {'Content-Profile': 'luna_varejo'} : {})
 });
 
 async function sbGet(table, params='') {
@@ -380,28 +382,28 @@ async function sbGet(table, params='') {
 }
 async function sbPost(table, body) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
-    method:'POST', headers: headers(), body: JSON.stringify(body)
+    method:'POST', headers: headers(true), body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbPatch(table, id, body) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method:'PATCH', headers: headers(), body: JSON.stringify(body)
+    method:'PATCH', headers: headers(true), body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbPatchCode(table, codigo, body) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?codigo=eq.${encodeURIComponent(codigo)}`, {
-    method:'PATCH', headers: headers(), body: JSON.stringify(body)
+    method:'PATCH', headers: headers(true), body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbDelete(table, id) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method:'DELETE', headers: headers()
+    method:'DELETE', headers: headers(true)
   });
   if (!r.ok) throw new Error(await r.text());
 }
@@ -483,9 +485,9 @@ async function loadAll(){
   showLoading('Carregando estoque...');
   try{
     const [prods, ents, sais] = await Promise.all([
-      sbGet('insumos_produtos','order=categoria,produto'),
-      sbGet('insumos_entradas','order=data_entrada.desc&limit=500'),
-      sbGet('insumos_saidas',  'order=data_saida.desc&limit=500'),
+      sbGet('produtos','order=categoria,produto'),
+      sbGet('entradas','order=data_entrada.desc&limit=500'),
+      sbGet('saidas',  'order=data_saida.desc&limit=500'),
     ]);
     produtos   = prods  || [];
     entradas   = ents   || [];
@@ -783,7 +785,7 @@ async function doEntrada(){
   const p=produtos.find(x=>x.codigo===codigo);
   showLoading('Salvando entrada...');
   try{
-    await sbPost('insumos_entradas',{
+    await sbPost('entradas',{
       data_entrada:data, codigo_produto:codigo,
       produto:p?.produto||'', fornecedor:'', nf_numero:obs||'-',
       quantidade:qty, unidade:p?.unidade||'Un',
@@ -792,7 +794,7 @@ async function doEntrada(){
     });
     // Update estoque_atual
     const novoEst=parseFloat(((Number(p?.estoque_atual)||0)+qty).toFixed(3));
-    await sbPatchCode('insumos_produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
+    await sbPatchCode('produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
     document.getElementById('entQty').value='';
     document.getElementById('entObs').value='';
     closeModal('modalEntrada');
@@ -813,14 +815,14 @@ async function doSaida(){
   if(qty>atual&&!confirm(`Qtd (${fmtU(qty,p?.unidade)}) maior que estoque (${fmtU(atual,p?.unidade)}). Confirmar?`)) return;
   showLoading('Salvando saída...');
   try{
-    await sbPost('insumos_saidas',{
+    await sbPost('saidas',{
       data_saida:data, codigo_produto:codigo,
       quantidade:qty, unidade:p?.unidade||'Un',
       destino:obs||'Produção', lote_origem:'-',
       observacoes:obs
     });
     const novoEst=parseFloat((Math.max(0,atual-qty)).toFixed(3));
-    await sbPatchCode('insumos_produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
+    await sbPatchCode('produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
     document.getElementById('saiQty').value='';
     document.getElementById('saiObs').value='';
     closeModal('modalSaida');
@@ -836,7 +838,7 @@ async function doSaida(){
 async function updateMinimo(codigo,val){
   const n=parseFloat(val); if(isNaN(n)||n<0) return;
   try{
-    await sbPatchCode('insumos_produtos',codigo,{estoque_minimo:n,updated_at:new Date().toISOString()});
+    await sbPatchCode('produtos',codigo,{estoque_minimo:n,updated_at:new Date().toISOString()});
     const p=produtos.find(x=>x.codigo===codigo); if(p) p.estoque_minimo=n;
     showSaveStatus('✓ Mínimo atualizado');
     renderEstoque(); renderAlertas();
@@ -846,7 +848,7 @@ async function updateMinimo(codigo,val){
 async function updateUnidade(codigo,val){
   const u=val.trim(); if(!u) return;
   try{
-    await sbPatchCode('insumos_produtos',codigo,{unidade:u,updated_at:new Date().toISOString()});
+    await sbPatchCode('produtos',codigo,{unidade:u,updated_at:new Date().toISOString()});
     const p=produtos.find(x=>x.codigo===codigo); if(p) p.unidade=u;
     showSaveStatus('✓ Unidade atualizada');
     renderAll();
@@ -895,13 +897,13 @@ async function salvarProduto(){
   showLoading('Salvando...');
   try{
     if(_prodEditCod){
-      await sbPatchCode('insumos_produtos',_prodEditCod,{
+      await sbPatchCode('produtos',_prodEditCod,{
         produto:nome, categoria:cat, unidade:unid,
         estoque_minimo:min, updated_at:new Date().toISOString()
       });
     }else{
       const codigo=gerarCodigo();
-      await sbPost('insumos_produtos',{
+      await sbPost('produtos',{
         codigo, produto:nome, categoria:cat,
         unidade:unid, estoque_minimo:min, estoque_atual:estIni
       });
@@ -920,9 +922,9 @@ async function excluirProduto(codigo){
   showLoading('Excluindo...');
   try{
     // Delete linked movements first
-    await fetch(`${SB_URL}/rest/v1/insumos_entradas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers()});
-    await fetch(`${SB_URL}/rest/v1/insumos_saidas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers()});
-    await fetch(`${SB_URL}/rest/v1/insumos_produtos?codigo=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers()});
+    await fetch(`${SB_URL}/rest/v1/entradas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
+    await fetch(`${SB_URL}/rest/v1/saidas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
+    await fetch(`${SB_URL}/rest/v1/produtos?codigo=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
     await loadAll();
     showSaveStatus('✓ Produto excluído');
   }catch(e){showSaveStatus('⚠ Erro: '+e.message,'warn');}
