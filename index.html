@@ -413,13 +413,16 @@ function showSaveStatus(msg,type='ok'){
    AUTH
 ═══════════════════════════════════ */
 async function checkAuth(){
-  const token=localStorage.getItem(TOKEN_KEY); if(!token) return;
+  const token=localStorage.getItem(TOKEN_KEY); if(!token) return false;
   try{
     const r=await fetch(LOGIN_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
     const d=await r.json();
-    if(d.ok) document.getElementById('loginScreen').classList.add('hidden');
-    else localStorage.removeItem(TOKEN_KEY);
-  }catch(e){ if(localStorage.getItem(TOKEN_KEY)) document.getElementById('loginScreen').classList.add('hidden'); }
+    if(d.ok){ document.getElementById('loginScreen').classList.add('hidden'); return true; }
+    else { localStorage.removeItem(TOKEN_KEY); return false; }
+  }catch(e){
+    if(localStorage.getItem(TOKEN_KEY)){ document.getElementById('loginScreen').classList.add('hidden'); return true; }
+    return false;
+  }
 }
 
 async function doLogin(){
@@ -890,8 +893,8 @@ function showTab(name){
    INIT
 ═══════════════════════════════════ */
 async function init(){
-  await checkAuth();
-  await loadAll();
+  const authed = await checkAuth();
+  if(authed) await loadAll();
 }
 init();
 </script>
