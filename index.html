@@ -361,51 +361,20 @@ tr:hover td{background:#faf8f5}
 /* ═══════════════════════════════════
    SUPABASE CONFIG
 ═══════════════════════════════════ */
-const SB_URL    = 'https://pbuhwpcpdcnaheaywmdv.supabase.co';
-const SB_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWh3cGNwZGNuYWhlYXl3bWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjU5MzksImV4cCI6MjA5MTg0MTkzOX0.Mg4PVg96ZiV3C2Rn0GLQU9c7ui_41OlU6Ldqn5jcvyY';
-const LOGIN_FN  = `${SB_URL}/functions/v1/luna-varejo-login`;
+const API       = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-api';
+const LOGIN_FN  = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-login';
 const TOKEN_KEY = 'luna_varejo_token';
 
-const headers = (write=false) => ({
-  'Content-Type': 'application/json',
-  'apikey': SB_KEY,
-  'Authorization': `Bearer ${SB_KEY}`,
-  'Prefer': 'return=representation',
-  'Accept-Profile': 'luna_varejo',
-  ...(write ? {'Content-Profile': 'luna_varejo'} : {})
-});
-
-async function sbGet(table, params='') {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: headers() });
+async function api(action, body={}, method='POST') {
+  const token = localStorage.getItem(TOKEN_KEY) || '';
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'x-luna-token': token }
+  };
+  if (method !== 'GET') opts.body = JSON.stringify(body);
+  const r = await fetch(`${API}?action=${action}`, opts);
   if (!r.ok) throw new Error(await r.text());
   return r.json();
-}
-async function sbPost(table, body) {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
-    method:'POST', headers: headers(true), body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function sbPatch(table, id, body) {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method:'PATCH', headers: headers(true), body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function sbPatchCode(table, codigo, body) {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}?codigo=eq.${encodeURIComponent(codigo)}`, {
-    method:'PATCH', headers: headers(true), body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function sbDelete(table, id) {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method:'DELETE', headers: headers(true)
-  });
-  if (!r.ok) throw new Error(await r.text());
 }
 
 /* ═══════════════════════════════════
@@ -484,14 +453,10 @@ document.getElementById('loginInput').addEventListener('keydown',e=>{if(e.key===
 async function loadAll(){
   showLoading('Carregando estoque...');
   try{
-    const [prods, ents, sais] = await Promise.all([
-      sbGet('produtos','order=categoria,produto'),
-      sbGet('entradas','order=data_entrada.desc&limit=500'),
-      sbGet('saidas',  'order=data_saida.desc&limit=500'),
-    ]);
-    produtos   = prods  || [];
-    entradas   = ents   || [];
-    saidas     = sais   || [];
+    const d = await api('load', {}, 'GET');
+    produtos = d.produtos || [];
+    entradas = d.entradas || [];
+    saidas   = d.saidas   || [];
     buildMovimentos();
     renderAll();
     showSaveStatus('✓ Dados carregados');
@@ -785,16 +750,7 @@ async function doEntrada(){
   const p=produtos.find(x=>x.codigo===codigo);
   showLoading('Salvando entrada...');
   try{
-    await sbPost('entradas',{
-      data_entrada:data, codigo_produto:codigo,
-      produto:p?.produto||'', fornecedor:'', nf_numero:obs||'-',
-      quantidade:qty, unidade:p?.unidade||'Un',
-      lote:'-', data_validade:'2099-12-31', saldo_fifo:qty,
-      observacoes:obs
-    });
-    // Update estoque_atual
-    const novoEst=parseFloat(((Number(p?.estoque_atual)||0)+qty).toFixed(3));
-    await sbPatchCode('produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
+    await api('entrada',{codigo,produto:p?.produto||'',quantidade:qty,unidade:p?.unidade||'Un',data,obs});
     document.getElementById('entQty').value='';
     document.getElementById('entObs').value='';
     closeModal('modalEntrada');
@@ -815,14 +771,7 @@ async function doSaida(){
   if(qty>atual&&!confirm(`Qtd (${fmtU(qty,p?.unidade)}) maior que estoque (${fmtU(atual,p?.unidade)}). Confirmar?`)) return;
   showLoading('Salvando saída...');
   try{
-    await sbPost('saidas',{
-      data_saida:data, codigo_produto:codigo,
-      quantidade:qty, unidade:p?.unidade||'Un',
-      destino:obs||'Produção', lote_origem:'-',
-      observacoes:obs
-    });
-    const novoEst=parseFloat((Math.max(0,atual-qty)).toFixed(3));
-    await sbPatchCode('produtos',codigo,{estoque_atual:novoEst,updated_at:new Date().toISOString()});
+    await api('saida',{codigo,produto:p?.produto||'',quantidade:qty,unidade:p?.unidade||'Un',data,obs});
     document.getElementById('saiQty').value='';
     document.getElementById('saiObs').value='';
     closeModal('modalSaida');
@@ -838,7 +787,7 @@ async function doSaida(){
 async function updateMinimo(codigo,val){
   const n=parseFloat(val); if(isNaN(n)||n<0) return;
   try{
-    await sbPatchCode('produtos',codigo,{estoque_minimo:n,updated_at:new Date().toISOString()});
+    await api('produto_update',{codigo,estoque_minimo:n});
     const p=produtos.find(x=>x.codigo===codigo); if(p) p.estoque_minimo=n;
     showSaveStatus('✓ Mínimo atualizado');
     renderEstoque(); renderAlertas();
@@ -848,7 +797,7 @@ async function updateMinimo(codigo,val){
 async function updateUnidade(codigo,val){
   const u=val.trim(); if(!u) return;
   try{
-    await sbPatchCode('produtos',codigo,{unidade:u,updated_at:new Date().toISOString()});
+    await api('produto_update',{codigo,unidade:u});
     const p=produtos.find(x=>x.codigo===codigo); if(p) p.unidade=u;
     showSaveStatus('✓ Unidade atualizada');
     renderAll();
@@ -897,16 +846,10 @@ async function salvarProduto(){
   showLoading('Salvando...');
   try{
     if(_prodEditCod){
-      await sbPatchCode('produtos',_prodEditCod,{
-        produto:nome, categoria:cat, unidade:unid,
-        estoque_minimo:min, updated_at:new Date().toISOString()
-      });
+      await api('produto_update',{codigo:_prodEditCod,produto:nome,categoria:cat,unidade:unid,estoque_minimo:min});
     }else{
       const codigo=gerarCodigo();
-      await sbPost('produtos',{
-        codigo, produto:nome, categoria:cat,
-        unidade:unid, estoque_minimo:min, estoque_atual:estIni
-      });
+      await api('produto_create',{codigo,produto:nome,categoria:cat,unidade:unid,estoque_minimo:min,estoque_atual:estIni,estoque_inicial:estIni});
     }
     _prodEditCod=null;
     closeModal('modalProduto');
@@ -921,10 +864,7 @@ async function excluirProduto(codigo){
   if(!confirm(`Excluir "${p?.produto}"?\n\nAtenção: as movimentações vinculadas a este produto também serão excluídas.`)) return;
   showLoading('Excluindo...');
   try{
-    // Delete linked movements first
-    await fetch(`${SB_URL}/rest/v1/entradas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
-    await fetch(`${SB_URL}/rest/v1/saidas?codigo_produto=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
-    await fetch(`${SB_URL}/rest/v1/produtos?codigo=eq.${encodeURIComponent(codigo)}`,{method:'DELETE',headers:headers(true)});
+    await api('produto_delete',{codigo});
     await loadAll();
     showSaveStatus('✓ Produto excluído');
   }catch(e){showSaveStatus('⚠ Erro: '+e.message,'warn');}
