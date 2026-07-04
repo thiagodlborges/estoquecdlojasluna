@@ -152,23 +152,9 @@ tr:hover td{background:#faf8f5}
 </head>
 <body>
 
-<div id="loginScreen">
-  <div class="login-card">
-    <div class="login-logo">Luna <span>Estoque</span></div>
-    <div class="login-sub">Centro de Distribuição — Insumos</div>
-    <div class="login-field">
-      <label>Senha de acesso</label>
-      <input type="password" id="loginInput" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="loginError"></div>
-    <div class="login-hint">Acesso restrito — Luna CD</div>
-  </div>
-</div>
-
-<div class="loading-overlay hidden" id="loadingOverlay">
+<div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
-  <span style="font-size:.8rem;color:var(--muted)" id="loadingMsg">Carregando...</span>
+  <span style="font-size:.8rem;color:var(--muted)" id="loadingMsg">Verificando acesso...</span>
 </div>
 
 <div class="app">
@@ -181,9 +167,11 @@ tr:hover td{background:#faf8f5}
       </div>
     </div>
     <div class="topbar-right">
+      <a href="https://thiagodlborges.github.io/sistema-luna/" style="color:var(--muted);font-size:.78rem;text-decoration:none;margin-right:4px">← Sistema Luna</a>
       <span id="saveStatus"></span>
       <button class="btn btn-sm btn-entry" onclick="openModal('modalEntrada')">↓ Entrada</button>
       <button class="btn btn-sm btn-exit"  onclick="openModal('modalSaida')">↑ Saída</button>
+      <button class="btn btn-sm" onclick="sairApp()">Sair</button>
     </div>
   </div>
 
@@ -357,19 +345,27 @@ tr:hover td{background:#faf8f5}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ═══════════════════════════════════
-   SUPABASE CONFIG
+   SUPABASE CONFIG — SSO via Sistema Luna
 ═══════════════════════════════════ */
-const API       = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-api';
-const LOGIN_FN  = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-login';
-const TOKEN_KEY = 'luna_varejo_token';
+const SUPABASE_URL = 'https://pbuhwpcpdcnaheaywmdv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWh3cGNwZGNuYWhlYXl3bWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjU5MzksImV4cCI6MjA5MTg0MTkzOX0.Mg4PVg96ZiV3C2Rn0GLQU9c7ui_41OlU6Ldqn5jcvyY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const API = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-api';
+const PORTAL_URL = 'https://thiagodlborges.github.io/sistema-luna/';
+let userToken = null;
+
+async function sairApp(){
+  await sb.auth.signOut();
+  window.location.href = PORTAL_URL;
+}
 
 async function api(action, body={}, method='POST') {
-  const token = localStorage.getItem(TOKEN_KEY) || '';
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json', 'x-luna-token': token }
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + userToken }
   };
   if (method !== 'GET') opts.body = JSON.stringify(body);
   const r = await fetch(`${API}?action=${action}`, opts);
@@ -410,45 +406,22 @@ function showSaveStatus(msg,type='ok'){
 }
 
 /* ═══════════════════════════════════
-   AUTH
+   AUTH — SSO: sem sessão válida ou sem permissão, volta pro portal
 ═══════════════════════════════════ */
 async function checkAuth(){
-  const token=localStorage.getItem(TOKEN_KEY); if(!token) return false;
-  try{
-    const r=await fetch(LOGIN_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
-    const d=await r.json();
-    if(d.ok){ document.getElementById('loginScreen').classList.add('hidden'); return true; }
-    else { localStorage.removeItem(TOKEN_KEY); return false; }
-  }catch(e){
-    if(localStorage.getItem(TOKEN_KEY)){ document.getElementById('loginScreen').classList.add('hidden'); return true; }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = PORTAL_URL; return false; }
+
+  const { data: ok, error } = await sb.rpc('tem_acesso', { p_slug: 'estoque_cd' });
+  if (error || !ok) {
+    await sb.auth.signOut();
+    window.location.href = PORTAL_URL;
     return false;
   }
-}
 
-async function doLogin(){
-  const btn=document.querySelector('.login-btn');
-  const err=document.getElementById('loginError');
-  const val=document.getElementById('loginInput').value.trim();
-  if(!val) return;
-  btn.textContent='Verificando...'; btn.disabled=true; err.textContent='';
-  try{
-    const r=await fetch(LOGIN_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:val})});
-    const d=await r.json();
-    if(d.ok&&d.token){
-      localStorage.setItem(TOKEN_KEY,d.token);
-      document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('loginInput').value='';
-      await loadAll();
-    }else{
-      err.textContent='Senha incorreta.';
-      document.getElementById('loginInput').value='';
-      document.getElementById('loginInput').focus();
-      setTimeout(()=>{err.textContent='';},3000);
-    }
-  }catch(e){err.textContent='Erro de conexão.';}
-  finally{btn.textContent='Entrar';btn.disabled=false;}
+  userToken = session.access_token;
+  return true;
 }
-document.getElementById('loginInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 /* ═══════════════════════════════════
    LOAD DATA
