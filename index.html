@@ -355,7 +355,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const API = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-api';
 const PORTAL_URL = 'https://thiagodlborges.github.io/sistema-luna/';
-let userToken = null;
 
 async function sairApp(){
   await sb.auth.signOut();
@@ -363,9 +362,12 @@ async function sairApp(){
 }
 
 async function api(action, body={}, method='POST') {
+  // Busca a sessão atual a cada chamada (supabase-js renova sozinho se estiver perto de expirar)
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = PORTAL_URL; return; }
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + userToken }
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token }
   };
   if (method !== 'GET') opts.body = JSON.stringify(body);
   const r = await fetch(`${API}?action=${action}`, opts);
@@ -419,7 +421,6 @@ async function checkAuth(){
     return false;
   }
 
-  userToken = session.access_token;
   return true;
 }
 
