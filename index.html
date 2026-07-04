@@ -167,7 +167,7 @@ tr:hover td{background:#faf8f5}
       </div>
     </div>
     <div class="topbar-right">
-      <a href="https://thiagodlborges.github.io/sistema-luna/" style="color:var(--muted);font-size:.78rem;text-decoration:none;margin-right:4px">← Sistema Luna</a>
+      <a href="https://thiagodlborges.github.io/Sistema-Luna/" style="color:var(--muted);font-size:.78rem;text-decoration:none;margin-right:4px">← Sistema Luna</a>
       <span id="saveStatus"></span>
       <button class="btn btn-sm btn-entry" onclick="openModal('modalEntrada')">↓ Entrada</button>
       <button class="btn btn-sm btn-exit"  onclick="openModal('modalSaida')">↑ Saída</button>
@@ -354,7 +354,7 @@ const SUPABASE_URL = 'https://pbuhwpcpdcnaheaywmdv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWh3cGNwZGNuYWhlYXl3bWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjU5MzksImV4cCI6MjA5MTg0MTkzOX0.Mg4PVg96ZiV3C2Rn0GLQU9c7ui_41OlU6Ldqn5jcvyY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const API = 'https://pbuhwpcpdcnaheaywmdv.supabase.co/functions/v1/luna-varejo-api';
-const PORTAL_URL = 'https://thiagodlborges.github.io/sistema-luna/';
+const PORTAL_URL = 'https://thiagodlborges.github.io/Sistema-Luna/';
 
 async function sairApp(){
   await sb.auth.signOut();
