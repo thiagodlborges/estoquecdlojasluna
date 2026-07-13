@@ -318,12 +318,9 @@ tr:hover td{background:#faf8f5}
     </div>
     <div class="field-row">
       <div class="field">
-        <label>Categoria</label>
-        <select id="pCat">
-          <option>Embalagem</option><option>Uniformes</option><option>Descartável</option>
-          <option>Limpeza</option><option>EPI</option><option>Escritório</option>
-          <option>Produção</option><option>Outros</option>
-        </select>
+        <label>Categoria <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(livre)</span></label>
+        <input type="text" id="pCat" list="catList" placeholder="Ex: Embalagem, Limpeza..." autocomplete="off">
+        <datalist id="catList"></datalist>
       </div>
       <div class="field">
         <label>Unidade <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(livre)</span></label>
@@ -693,6 +690,11 @@ function populateSelects(){
     sel.innerHTML=produtos.map(p=>`<option value="${p.codigo}">${p.produto} (${p.unidade})</option>`).join('');
     if(cur) sel.value=cur;
   });
+  const catList=document.getElementById('catList');
+  if(catList){
+    const cats=[...new Set(produtos.map(p=>p.categoria).filter(Boolean))].sort();
+    catList.innerHTML=cats.map(c=>`<option value="${c.replace(/"/g,'&quot;')}"></option>`).join('');
+  }
 }
 
 /* ═══════════════════════════════════
@@ -795,7 +797,7 @@ function openNovoProduto(){
   _prodEditCod=null;
   document.getElementById('modalProdTitle').textContent='Novo Produto';
   ['pNome','pEstIni','pEstMin'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('pCat').value='Embalagem';
+  document.getElementById('pCat').value='';
   document.getElementById('pUnid').value='Un';
   openModal('modalProduto');
   setTimeout(()=>document.getElementById('pNome').focus(),80);
@@ -806,7 +808,7 @@ function editarProduto(codigo){
   const p=produtos.find(x=>x.codigo===codigo); if(!p) return;
   document.getElementById('modalProdTitle').textContent='Editar Produto';
   document.getElementById('pNome').value=p.produto;
-  document.getElementById('pCat').value=p.categoria||'Outros';
+  document.getElementById('pCat').value=p.categoria||'';
   document.getElementById('pUnid').value=p.unidade;
   document.getElementById('pEstMin').value=Number(p.estoque_minimo)||0;
   document.getElementById('pEstIni').value='';
@@ -815,11 +817,12 @@ function editarProduto(codigo){
 
 async function salvarProduto(){
   const nome=document.getElementById('pNome').value.trim();
-  const cat=document.getElementById('pCat').value;
+  const cat=document.getElementById('pCat').value.trim();
   const unid=document.getElementById('pUnid').value.trim();
   const estIni=parseFloat(document.getElementById('pEstIni').value)||0;
   const min=parseFloat(document.getElementById('pEstMin').value)||0;
   if(!nome){alert('Informe o nome do insumo.');return;}
+  if(!cat){alert('Informe a categoria.');return;}
   if(!unid){alert('Informe a unidade.');return;}
   showLoading('Salvando...');
   try{
