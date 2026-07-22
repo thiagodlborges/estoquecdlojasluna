@@ -210,7 +210,7 @@ tr:hover td{background:#faf8f5}
             <thead><tr>
               <th>Produto</th><th>Categoria</th><th>Unid.</th>
               <th>Estoque atual</th><th>Mínimo parametrizado</th>
-              <th>Média saída 30d</th><th>Cobertura</th>
+              <th>Média saída 30d</th><th>Cobertura</th><th>Preço Médio</th><th>Valor em Estoque</th>
             </tr></thead>
             <tbody id="tbEstoque"></tbody>
           </table>
@@ -286,6 +286,7 @@ tr:hover td{background:#faf8f5}
       <div class="field"><label>Quantidade</label><input type="number" id="entQty" min="0.001" step="any" placeholder="0"></div>
       <div class="field"><label>Data</label><input type="date" id="entData"></div>
     </div>
+    <div class="field"><label>Valor unitário (R$) <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(opcional — alimenta o preço médio)</span></label><input type="number" id="entValor" min="0" step="0.01" placeholder="0,00"></div>
     <div class="field"><label>Observação (opcional)</label><input type="text" id="entObs" placeholder="Ex: NF 1234, fornecedor..."></div>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modalEntrada')">Cancelar</button>
@@ -385,6 +386,7 @@ let _prodEditCod = null;
 const today = () => new Date().toISOString().slice(0,10);
 function fmtN(v,d=2){const n=Number(v)||0;const dec=Number.isInteger(n)&&d===2?0:d;return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
 function fmtU(v,u){const n=Number(v)||0;const dec=Number.isInteger(n)?0:2;return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'\u00a0'+(u||'');}
+function fmtR(v){return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 
 /* ═══════════════════════════════════
    LOADING OVERLAY
@@ -506,7 +508,7 @@ function renderEstoque(){
   );
 
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="7"><div class="empty"><span class="empty-icon">📭</span>Nenhum produto encontrado.</div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="9"><div class="empty"><span class="empty-icon">📭</span>Nenhum produto encontrado.</div></td></tr>`;
     renderSummary(); return;
   }
 
@@ -536,6 +538,8 @@ function renderEstoque(){
       </td>
       <td style="font-family:var(--mono)">${med>0?fmtU(med,p.unidade)+'/dia':'<span style="color:var(--hint)">—</span>'}</td>
       <td style="font-family:var(--mono);font-weight:600;color:${cobColor}">${cob}</td>
+      <td style="font-family:var(--mono)">${fmtR(p.preco_medio||0)}</td>
+      <td style="font-family:var(--mono);font-weight:600">${fmtR(atual*(p.preco_medio||0))}</td>
     </tr>`;
   }).join('');
   renderSummary();
@@ -725,13 +729,15 @@ async function doEntrada(){
   const codigo=document.getElementById('entProd').value;
   const qty=parseFloat(document.getElementById('entQty').value);
   const data=document.getElementById('entData').value;
+  const valor=parseFloat(document.getElementById('entValor').value)||0;
   const obs=document.getElementById('entObs').value.trim();
   if(!codigo||!qty||qty<=0||!data){alert('Preencha produto, quantidade e data.');return;}
   const p=produtos.find(x=>x.codigo===codigo);
   showLoading('Salvando entrada...');
   try{
-    await api('entrada',{codigo,produto:p?.produto||'',quantidade:qty,unidade:p?.unidade||'Un',data,obs});
+    await api('entrada',{codigo,produto:p?.produto||'',quantidade:qty,unidade:p?.unidade||'Un',data,valor_unitario:valor,obs});
     document.getElementById('entQty').value='';
+    document.getElementById('entValor').value='';
     document.getElementById('entObs').value='';
     closeModal('modalEntrada');
     await loadAll();
