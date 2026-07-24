@@ -283,10 +283,10 @@ tr:hover td{background:#faf8f5}
     <div class="modal-title">↓ Registrar Entrada</div>
     <div class="field"><label>Produto</label><select id="entProd"></select></div>
     <div class="field-row">
-      <div class="field"><label>Quantidade</label><input type="number" id="entQty" min="0.001" step="any" placeholder="0"></div>
+      <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" id="entQty" placeholder="0"></div>
       <div class="field"><label>Data</label><input type="date" id="entData"></div>
     </div>
-    <div class="field"><label>Valor unitário (R$) <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(opcional — alimenta o preço médio)</span></label><input type="number" id="entValor" min="0" step="0.01" placeholder="0,00"></div>
+    <div class="field"><label>Valor unitário (R$) <span style="font-weight:400;font-size:.68rem;color:var(--hint)">(opcional — alimenta o preço médio)</span></label><input type="text" inputmode="decimal" id="entValor" placeholder="0,00"></div>
     <div class="field"><label>Observação (opcional)</label><input type="text" id="entObs" placeholder="Ex: NF 1234, fornecedor..."></div>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modalEntrada')">Cancelar</button>
@@ -300,7 +300,7 @@ tr:hover td{background:#faf8f5}
     <div class="modal-title">↑ Registrar Saída</div>
     <div class="field"><label>Produto</label><select id="saiProd"></select></div>
     <div class="field-row">
-      <div class="field"><label>Quantidade</label><input type="number" id="saiQty" min="0.001" step="any" placeholder="0"></div>
+      <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" id="saiQty" placeholder="0"></div>
       <div class="field"><label>Data</label><input type="date" id="saiData"></div>
     </div>
     <div class="field"><label>Destino / Observação (opcional)</label><input type="text" id="saiObs" placeholder="Ex: Produção lote 07..."></div>
@@ -334,8 +334,8 @@ tr:hover td{background:#faf8f5}
       </div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Estoque inicial</label><input type="number" id="pEstIni" min="0" step="any" placeholder="0"></div>
-      <div class="field"><label>Estoque mínimo</label><input type="number" id="pEstMin" min="0" step="any" placeholder="0"></div>
+      <div class="field"><label>Estoque inicial</label><input type="text" inputmode="decimal" id="pEstIni" placeholder="0"></div>
+      <div class="field"><label>Estoque mínimo</label><input type="text" inputmode="decimal" id="pEstMin" placeholder="0"></div>
     </div>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modalProduto')">Cancelar</button>
@@ -387,6 +387,11 @@ const today = () => new Date().toISOString().slice(0,10);
 function fmtN(v,d=2){const n=Number(v)||0;const dec=Number.isInteger(n)&&d===2?0:d;return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
 function fmtU(v,u){const n=Number(v)||0;const dec=Number.isInteger(n)?0:2;return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'\u00a0'+(u||'');}
 function fmtR(v){return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+// Campos de quantidade/valor viraram texto (não number) porque o input
+// number nativo exige ponto decimal e rejeita vírgula — no Brasil isso
+// fazia parecer que não dava pra digitar quantidade quebrada. Essa função
+// aceita tanto "2,5" quanto "2.5".
+function parseNumBR(v){ return parseFloat(String(v||'').trim().replace(',','.')); }
 
 /* ═══════════════════════════════════
    LOADING OVERLAY
@@ -532,7 +537,7 @@ function renderEstoque(){
         <div class="prog-wrap"><div class="prog-bar ${barCls}" style="width:${pct.toFixed(0)}%"></div></div>
       </td>
       <td>
-        <input class="inline-input" type="number" value="${min}" step="any" style="width:72px"
+        <input class="inline-input" type="text" inputmode="decimal" value="${String(min).replace('.',',')}" style="width:72px"
           onchange="updateMinimo('${p.codigo}',this.value)"
           title="Clique para editar o mínimo"> ${p.unidade}
       </td>
@@ -664,7 +669,7 @@ function renderProdutos(){
         onchange="updateUnidade('${p.codigo}',this.value)" title="Editar unidade">
     </td>
     <td>
-      <input class="inline-input" type="number" value="${Number(p.estoque_minimo)||0}" step="any" style="width:72px"
+      <input class="inline-input" type="text" inputmode="decimal" value="${String(Number(p.estoque_minimo)||0).replace('.',',')}" style="width:72px"
         onchange="updateMinimo('${p.codigo}',this.value)"> ${p.unidade}
     </td>
     <td>
@@ -727,9 +732,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape') closeAllModals();})
 
 async function doEntrada(){
   const codigo=document.getElementById('entProd').value;
-  const qty=parseFloat(document.getElementById('entQty').value);
+  const qty=parseNumBR(document.getElementById('entQty').value);
   const data=document.getElementById('entData').value;
-  const valor=parseFloat(document.getElementById('entValor').value)||0;
+  const valor=parseNumBR(document.getElementById('entValor').value)||0;
   const obs=document.getElementById('entObs').value.trim();
   if(!codigo||!qty||qty<=0||!data){alert('Preencha produto, quantidade e data.');return;}
   const p=produtos.find(x=>x.codigo===codigo);
@@ -748,7 +753,7 @@ async function doEntrada(){
 
 async function doSaida(){
   const codigo=document.getElementById('saiProd').value;
-  const qty=parseFloat(document.getElementById('saiQty').value);
+  const qty=parseNumBR(document.getElementById('saiQty').value);
   const data=document.getElementById('saiData').value;
   const obs=document.getElementById('saiObs').value.trim();
   if(!codigo||!qty||qty<=0||!data){alert('Preencha produto, quantidade e data.');return;}
@@ -771,7 +776,7 @@ async function doSaida(){
    ACTIONS: INLINE EDITS
 ═══════════════════════════════════ */
 async function updateMinimo(codigo,val){
-  const n=parseFloat(val); if(isNaN(n)||n<0) return;
+  const n=parseNumBR(val); if(isNaN(n)||n<0) return;
   try{
     await api('produto_update',{codigo,estoque_minimo:n});
     const p=produtos.find(x=>x.codigo===codigo); if(p) p.estoque_minimo=n;
@@ -816,7 +821,7 @@ function editarProduto(codigo){
   document.getElementById('pNome').value=p.produto;
   document.getElementById('pCat').value=p.categoria||'';
   document.getElementById('pUnid').value=p.unidade;
-  document.getElementById('pEstMin').value=Number(p.estoque_minimo)||0;
+  document.getElementById('pEstMin').value=String(Number(p.estoque_minimo)||0).replace('.',',');
   document.getElementById('pEstIni').value='';
   openModal('modalProduto');
 }
@@ -825,8 +830,8 @@ async function salvarProduto(){
   const nome=document.getElementById('pNome').value.trim();
   const cat=document.getElementById('pCat').value.trim();
   const unid=document.getElementById('pUnid').value.trim();
-  const estIni=parseFloat(document.getElementById('pEstIni').value)||0;
-  const min=parseFloat(document.getElementById('pEstMin').value)||0;
+  const estIni=parseNumBR(document.getElementById('pEstIni').value)||0;
+  const min=parseNumBR(document.getElementById('pEstMin').value)||0;
   if(!nome){alert('Informe o nome do insumo.');return;}
   if(!cat){alert('Informe a categoria.');return;}
   if(!unid){alert('Informe a unidade.');return;}
